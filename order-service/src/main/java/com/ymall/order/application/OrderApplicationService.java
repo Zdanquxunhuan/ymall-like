@@ -82,7 +82,7 @@ public class OrderApplicationService {
         }
 
         String eventId = UUID.randomUUID().toString();
-        insertStateFlow(orderNo, null, OrderStatus.CREATED.name(), "CREATE", eventId);
+        insertStateFlow(orderNo, null, OrderStatus.CREATED.name(), "CREATE", eventId, null);
         insertOutboxEvent(eventId, orderNo, FIXED_TAG,
                 buildPayload(eventId, EVENT_CREATED, order, items));
 
@@ -108,7 +108,7 @@ public class OrderApplicationService {
             throw new BizException(ErrorCode.ORDER_CONCURRENT_MODIFIED, "订单状态更新冲突");
         }
         String eventId = UUID.randomUUID().toString();
-        insertStateFlow(orderNo, OrderStatus.CREATED.name(), OrderStatus.CANCELED.name(), "CANCEL", eventId);
+        insertStateFlow(orderNo, OrderStatus.CREATED.name(), OrderStatus.CANCELED.name(), "CANCEL", eventId, null);
         List<OrderItem> items = orderItemMapper.findByOrderNo(orderNo);
         insertOutboxEvent(eventId, orderNo, FIXED_TAG, buildPayload(eventId, EVENT_CANCELED, order, items));
         Order refreshed = orderMapper.selectById(orderNo);
@@ -134,7 +134,8 @@ public class OrderApplicationService {
         return orderItem;
     }
 
-    private void insertStateFlow(String orderNo, String fromStatus, String toStatus, String event, String eventId) {
+    private void insertStateFlow(String orderNo, String fromStatus, String toStatus, String event, String eventId,
+                                 String ignoredReason) {
         OrderStateFlow flow = new OrderStateFlow();
         flow.setOrderNo(orderNo);
         flow.setFromStatus(fromStatus == null ? "NONE" : fromStatus);
@@ -142,6 +143,7 @@ public class OrderApplicationService {
         flow.setEvent(event);
         flow.setEventId(eventId);
         flow.setTraceId(TraceIdUtil.currentTraceId());
+        flow.setIgnoredReason(ignoredReason);
         flow.setCreatedAt(Instant.now());
         orderStateFlowMapper.insert(flow);
     }

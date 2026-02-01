@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.time.Instant;
 
@@ -17,4 +18,10 @@ public interface MqConsumeLogMapper {
     @Select("SELECT COUNT(1) FROM t_mq_consume_log "
             + "WHERE consumer_group = #{consumerGroup} AND created_at >= #{since}")
     long countSince(@Param("consumerGroup") String consumerGroup, @Param("since") Instant since);
+
+    @Update("UPDATE t_mq_consume_log SET status = #{status} "
+            + "WHERE event_id = #{eventId} AND consumer_group = #{consumerGroup}")
+    int updateStatus(@Param("eventId") String eventId,
+                     @Param("consumerGroup") String consumerGroup,
+                     @Param("status") String status);
 }

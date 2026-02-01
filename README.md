@@ -151,6 +151,53 @@ k6 run k6/inventory-reserve.js
   - key: `eventId`
   - schemaVersion: `v1`
 
+## 库存事件乱序/重复演示（order-service）
+
+> 使用接口注入 StockReserved/StockReserveFailed，验证最终状态稳定。
+
+1) 创建订单并记录 orderNo。
+
+2) 发送乱序 + 重复事件：
+
+```bash
+ORDER_NO=Oxxxx
+EVENT_ID_DUP=demo-dup-1
+
+curl -X POST http://localhost:8081/orders/stock-events/demo \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "orderNo": "'"$ORDER_NO"'",
+    "skuId": 1001,
+    "warehouseId": 1,
+    "qty": 1,
+    "events": [
+      {
+        "eventType": "StockReserveFailed",
+        "eventId": "out-of-order-1",
+        "eventTime": "2024-01-01T00:00:02Z"
+      },
+      {
+        "eventType": "StockReserved",
+        "eventId": "'"$EVENT_ID_DUP"'",
+        "eventTime": "2024-01-01T00:00:01Z"
+      },
+      {
+        "eventType": "StockReserved",
+        "eventId": "'"$EVENT_ID_DUP"'",
+        "eventTime": "2024-01-01T00:00:01Z"
+      }
+    ]
+  }'
+```
+
+3) 查询订单最终状态：
+
+```bash
+curl http://localhost:8081/orders/$ORDER_NO
+```
+
+预期：最终状态稳定为 `STOCK_RESERVED` 或 `STOCK_FAILED`，乱序/重复事件会被记录为 IGNORED（见 t_order_state_flow）。
+
 ## 库存初始化与超卖验证
 
 - `sql/init.sql` 默认初始化 `skuId=1001`、`warehouseId=1`、`available=100`。

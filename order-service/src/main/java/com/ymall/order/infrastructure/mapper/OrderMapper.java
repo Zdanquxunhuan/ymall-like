@@ -14,4 +14,10 @@ public interface OrderMapper extends BaseMapper<Order> {
                         @Param("fromStatus") String fromStatus,
                         @Param("toStatus") String toStatus,
                         @Param("version") Long version);
+
+    @Update("UPDATE t_order SET status = #{toStatus}, version = version + 1, updated_at = NOW() "
+            + "WHERE order_no = #{orderNo} AND status = #{fromStatus} AND deleted = 0")
+    int updateStatusByStatus(@Param("orderNo") String orderNo,
+                             @Param("fromStatus") String fromStatus,
+                             @Param("toStatus") String toStatus);
 }

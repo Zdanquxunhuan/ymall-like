@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS t_order_state_flow (
     event VARCHAR(64) NOT NULL,
     event_id VARCHAR(64) NOT NULL,
     trace_id VARCHAR(64),
+    ignored_reason VARCHAR(128),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
