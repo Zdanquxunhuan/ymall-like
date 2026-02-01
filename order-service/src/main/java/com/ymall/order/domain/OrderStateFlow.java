@@ -12,6 +12,7 @@ public class OrderStateFlow {
     private String event;
     private String eventId;
     private String traceId;
+    private String ignoredReason;
     private Instant createdAt;
 
     public String getOrderNo() {
@@ -60,6 +61,14 @@ public class OrderStateFlow {
 
     public void setTraceId(String traceId) {
         this.traceId = traceId;
+    }
+
+    public String getIgnoredReason() {
+        return ignoredReason;
+    }
+
+    public void setIgnoredReason(String ignoredReason) {
+        this.ignoredReason = ignoredReason;
     }
 
     public Instant getCreatedAt() {

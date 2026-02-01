@@ -26,4 +26,8 @@ public class MqConsumeLogService {
     public long countSince(String consumerGroup, Instant since) {
         return consumeLogMapper.countSince(consumerGroup, since);
     }
+
+    public void updateStatus(String eventId, String consumerGroup, String status) {
+        consumeLogMapper.updateStatus(eventId, consumerGroup, status);
+    }
 }

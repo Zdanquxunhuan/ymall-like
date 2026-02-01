@@ -4,6 +4,8 @@ import java.util.Arrays;
 
 public enum OrderStatus {
     CREATED,
+    STOCK_RESERVED,
+    STOCK_FAILED,
     CANCELED,
     UNKNOWN;
 

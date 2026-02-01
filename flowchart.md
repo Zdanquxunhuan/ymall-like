@@ -70,7 +70,24 @@ flowchart TD
 ```mermaid
 stateDiagram-v2
     [*] --> CREATED
+    CREATED --> STOCK_RESERVED: StockReserved (CAS)
+    CREATED --> STOCK_FAILED: StockReserveFailed (CAS)
     CREATED --> CANCELED: cancel (CAS)
+```
+
+## 库存事件乱序处理（order-service）
+
+```mermaid
+flowchart TD
+    A[StockReserved/StockReserveFailed] --> B[Parse event_id + event_time]
+    B --> C[INSERT IGNORE t_mq_consume_log]
+    C --> D{Inserted?}
+    D -- No --> E[Duplicate skip]
+    D -- Yes --> F[CAS update order status where status=CREATED]
+    F --> G{Updated?}
+    G -- Yes --> H[Insert t_order_state_flow]
+    G -- No --> I[Mark consume log IGNORED]
+    I --> J[Insert t_order_state_flow ignored_reason=STATUS_NOT_CREATED/CAS_CONFLICT]
 ```
 
 ## Outbox Relay + Retry + DLQ + 消费幂等
