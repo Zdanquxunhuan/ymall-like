@@ -6,6 +6,7 @@ public enum OrderStatus {
     CREATED,
     STOCK_RESERVED,
     STOCK_FAILED,
+    PAID,
     CANCELED,
     UNKNOWN;
 

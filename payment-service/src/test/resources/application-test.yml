@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:payment_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  main:
+    allow-bean-definition-overriding: true
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: payment-test-producer
+
+payment:
+  callback:
+    secret: demo-secret
+  reconcile:
+    timeout-seconds: 1

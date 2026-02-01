@@ -3,7 +3,6 @@ package com.ymall.order.application;
 import com.ymall.order.domain.Order;
 import com.ymall.order.domain.OrderStateFlow;
 import com.ymall.order.domain.OrderStatus;
-import com.ymall.order.infrastructure.client.PaymentClient;
 import com.ymall.order.infrastructure.mapper.OrderMapper;
 import com.ymall.order.infrastructure.mapper.OrderStateFlowMapper;
 import com.ymall.platform.infra.trace.TraceIdUtil;
@@ -13,7 +12,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Service
-public class OrderStockEventService {
+public class OrderPaymentEventService {
     public enum HandleResult {
         APPLIED,
         IGNORED
@@ -21,59 +20,38 @@ public class OrderStockEventService {
 
     private final OrderMapper orderMapper;
     private final OrderStateFlowMapper orderStateFlowMapper;
-    private final PaymentClient paymentClient;
 
-    public OrderStockEventService(OrderMapper orderMapper,
-                                  OrderStateFlowMapper orderStateFlowMapper,
-                                  PaymentClient paymentClient) {
+    public OrderPaymentEventService(OrderMapper orderMapper, OrderStateFlowMapper orderStateFlowMapper) {
         this.orderMapper = orderMapper;
         this.orderStateFlowMapper = orderStateFlowMapper;
-        this.paymentClient = paymentClient;
     }
 
-    public HandleResult handleStockEvent(InventoryEventPayload payload) {
-        String targetStatus = resolveTargetStatus(payload.getEventType());
-        if (targetStatus == null) {
-            return HandleResult.IGNORED;
-        }
-
+    public HandleResult handlePaymentSucceeded(PaymentEventPayload payload) {
         Order order = orderMapper.selectById(payload.getOrderNo());
         if (order == null) {
             insertIgnoredFlow(payload, "ORDER_NOT_FOUND", "NONE");
             return HandleResult.IGNORED;
         }
-        if (!OrderStatus.CREATED.name().equalsIgnoreCase(order.getStatus())) {
-            insertIgnoredFlow(payload, "STATUS_NOT_CREATED", order.getStatus());
+        if (!OrderStatus.STOCK_RESERVED.name().equalsIgnoreCase(order.getStatus())) {
+            insertIgnoredFlow(payload, "STATUS_NOT_STOCK_RESERVED", order.getStatus());
             return HandleResult.IGNORED;
         }
-
-        int updated = orderMapper.updateStatusByStatus(payload.getOrderNo(), OrderStatus.CREATED.name(), targetStatus);
+        int updated = orderMapper.updateStatusByStatus(payload.getOrderNo(),
+                OrderStatus.STOCK_RESERVED.name(), OrderStatus.PAID.name());
         if (updated == 0) {
             Order latest = orderMapper.selectById(payload.getOrderNo());
             String current = latest == null ? "NONE" : Objects.requireNonNullElse(latest.getStatus(), "NONE");
             insertIgnoredFlow(payload, "CAS_CONFLICT", current);
             return HandleResult.IGNORED;
         }
-
-        insertFlow(payload.getOrderNo(), OrderStatus.CREATED.name(), targetStatus, payload.getEventType(), payload.getEventId(), null);
-        if (OrderStatus.STOCK_RESERVED.name().equalsIgnoreCase(targetStatus)) {
-            paymentClient.createPayment(payload.getOrderNo(), order.getAmount(), payload.getEventId());
-        }
+        insertFlow(payload.getOrderNo(), OrderStatus.STOCK_RESERVED.name(), OrderStatus.PAID.name(),
+                payload.getEventType(), payload.getEventId(), null);
         return HandleResult.APPLIED;
     }
 
-    private String resolveTargetStatus(String eventType) {
-        if ("StockReserved".equals(eventType)) {
-            return OrderStatus.STOCK_RESERVED.name();
-        }
-        if ("StockReserveFailed".equals(eventType)) {
-            return OrderStatus.STOCK_FAILED.name();
-        }
-        return null;
-    }
-
-    private void insertIgnoredFlow(InventoryEventPayload payload, String ignoredReason, String currentStatus) {
-        insertFlow(payload.getOrderNo(), currentStatus, currentStatus, payload.getEventType(), payload.getEventId(), ignoredReason);
+    private void insertIgnoredFlow(PaymentEventPayload payload, String ignoredReason, String currentStatus) {
+        insertFlow(payload.getOrderNo(), currentStatus, currentStatus, payload.getEventType(),
+                payload.getEventId(), ignoredReason);
     }
 
     private void insertFlow(String orderNo, String fromStatus, String toStatus, String event, String eventId,
