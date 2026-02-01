@@ -25,5 +25,8 @@ logging:
 order:
   outbox:
     batch-size: 50
-    relay-interval-ms: 2000
-    retry-delay-seconds: 10
+    relay-interval-ms: 500
+    tag: OrderEvent
+    retry-base-seconds: 2
+    retry-max-seconds: 300
+    max-retries: 6

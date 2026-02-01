@@ -1,7 +1,6 @@
 package com.ymall.order;
 
 import com.ymall.platform.infra.idempotency.IdempotencyService;
-import com.ymall.platform.infra.mq.ConsumerIdempotencyService;
 import com.ymall.platform.infra.ratelimit.RateLimiter;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -28,19 +27,5 @@ public class TestInfraConfig {
     @Bean
     public RateLimiter rateLimiter() {
         return (key, rate, capacity) -> true;
-    }
-
-    @Bean
-    public ConsumerIdempotencyService consumerIdempotencyService() {
-        return new ConsumerIdempotencyService() {
-            @Override
-            public boolean tryAcquire(String messageKey) {
-                return true;
-            }
-
-            @Override
-            public void markSuccess(String messageKey) {
-            }
-        };
     }
 }

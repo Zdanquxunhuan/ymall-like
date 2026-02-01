@@ -22,6 +22,7 @@ mvn -q -pl order-service -am spring-boot:run
 - 幂等组件（Redis 实现）
 - 限流组件（Redis Lua 令牌桶）
 - RocketMQ 模板 + Outbox 中继骨架
+- Transactional Outbox Relay（指数退避 + DLQ + 消费幂等日志）
 
 ## curl 示例
 
@@ -46,6 +47,52 @@ curl -X POST http://localhost:8081/orders \
     ]
   }'
 ```
+
+### Outbox Relay 与消费日志（1s 内可见）
+
+```bash
+curl -X POST http://localhost:8081/orders \
+  -H 'Content-Type: application/json' \
+  -H 'idempotency_key: order-req-2' \
+  -d '{
+    "userId": 1,
+    "amount": 88.00,
+    "clientRequestId": "order-req-2",
+    "items": [
+      {
+        "skuId": 1002,
+        "qty": 1,
+        "titleSnapshot": "测试商品",
+        "priceSnapshot": 88.00,
+        "promoSnapshotJson": "{}"
+      }
+    ]
+  }'
+```
+
+1s 内可在 `order-service` 日志看到 outbox relay 与 `OrderCreated` 消费日志。
+
+### 可靠性演示（停止 broker 后恢复）
+
+```bash
+docker compose stop rocketmq-broker
+```
+
+此时创建订单会看到 outbox relay 重试日志。随后启动 broker：
+
+```bash
+docker compose start rocketmq-broker
+```
+
+恢复后会看到之前事件成功投递与消费日志（retry 生效）。
+
+### 消费计数接口
+
+```bash
+curl "http://localhost:8081/orders/consumes/count?consumerGroup=order-service-group&since=2024-01-01T00:00:00Z"
+```
+
+用于压测验证消费数量一致。
 
 ### 订单查询
 
@@ -83,6 +130,7 @@ curl http://localhost:8080/demo/ratelimit -H 'X-User-Id: u1'
 k6 run k6/idempotent.js
 k6 run k6/ratelimit.js
 k6 run k6/order-create.js
+k6 run k6/order-create-consume.js
 ```
 
 ## 常见故障排查

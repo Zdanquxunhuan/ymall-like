@@ -73,13 +73,24 @@ stateDiagram-v2
     CREATED --> CANCELED: cancel (CAS)
 ```
 
-## Outbox Relay
+## Outbox Relay + Retry + DLQ + 消费幂等
 
 ```mermaid
 flowchart TD
-    A[Outbox Relay Scheduler] --> B[Query t_outbox_event NEW/FAILED]
-    B --> C[Send RocketMQ message]
-    C --> D{Send success?}
-    D -- Yes --> E[Mark SENT]
-    D -- No --> F[Mark FAILED + next_retry_at]
+    A[OutboxRelayWorker] --> B[Scan t_outbox_event NEW/RETRY & next_retry_at<=now]
+    B --> C[Mark PROCESSING (claim)]
+    C --> D[Send RocketMQ keys=event_id tag=OrderEvent header traceId]
+    D --> E{Send success?}
+    E -- Yes --> F[Mark SENT]
+    E -- No --> G{retry_count >= max?}
+    G -- No --> H[Exponential backoff -> status RETRY & next_retry_at]
+    G -- Yes --> I[Mark DEAD + ALARM log]
+
+    J[Consumer] --> K[Parse payload eventType]
+    K --> L{eventType == OrderCreated?}
+    L -- No --> M[Ignore]
+    L -- Yes --> N[INSERT IGNORE t_mq_consume_log (event_id, consumer_group)]
+    N --> O{Inserted?}
+    O -- No --> P[Idempotent skip]
+    O -- Yes --> Q[Business consume + log]
 ```

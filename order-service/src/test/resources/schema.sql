@@ -40,5 +40,14 @@ CREATE TABLE IF NOT EXISTS t_outbox_event (
     status VARCHAR(32) NOT NULL,
     retry_count INT DEFAULT 0,
     next_retry_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    trace_id VARCHAR(64)
+);
+
+CREATE TABLE IF NOT EXISTS t_mq_consume_log (
+    event_id VARCHAR(64) NOT NULL,
+    consumer_group VARCHAR(128) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_event_id (event_id)
 );
