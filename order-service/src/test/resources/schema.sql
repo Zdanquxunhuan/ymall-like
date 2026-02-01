@@ -1,19 +1,3 @@
-CREATE TABLE IF NOT EXISTS outbox_message (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    aggregate_type VARCHAR(64) NOT NULL,
-    aggregate_id VARCHAR(64) NOT NULL,
-    topic VARCHAR(128) NOT NULL,
-    tag VARCHAR(64) NOT NULL,
-    message_key VARCHAR(128) NOT NULL,
-    payload TEXT NOT NULL,
-    status VARCHAR(32) NOT NULL,
-    trace_id VARCHAR(64),
-    version BIGINT DEFAULT 0,
-    deleted TINYINT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS t_order (
     order_no VARCHAR(64) PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -22,9 +6,9 @@ CREATE TABLE IF NOT EXISTS t_order (
     client_request_id VARCHAR(64) NOT NULL,
     version BIGINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT DEFAULT 0,
-    UNIQUE KEY uk_order_user_request (user_id, client_request_id)
+    UNIQUE (user_id, client_request_id)
 );
 
 CREATE TABLE IF NOT EXISTS t_order_item (

@@ -1,0 +1,42 @@
+# Order Service Event Contract (v1)
+
+## Topic
+- `order-events`
+
+## Message Key
+- `biz_key` = `orderNo`
+
+## Tags
+| Tag | Description | Version |
+| --- | --- | --- |
+| `OrderCreated` | 订单已创建 | v1 |
+| `OrderCanceled` | 订单已取消 | v1 |
+
+## Payload Schema (JSON)
+
+```json
+{
+  "eventId": "string",
+  "eventType": "OrderCreated | OrderCanceled",
+  "orderNo": "string",
+  "userId": 0,
+  "amount": 0.00,
+  "status": "CREATED | CANCELED",
+  "clientRequestId": "string",
+  "occurredAt": "2024-01-01T00:00:00Z",
+  "schemaVersion": "v1",
+  "items": [
+    {
+      "skuId": 0,
+      "qty": 0,
+      "titleSnapshot": "string",
+      "priceSnapshot": 0.00,
+      "promoSnapshotJson": "{}"
+    }
+  ]
+}
+```
+
+## Delivery Semantics
+- Outbox + relay at-least-once.
+- Consumers must implement idempotency by message key.
