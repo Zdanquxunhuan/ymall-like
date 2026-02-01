@@ -73,6 +73,7 @@ stateDiagram-v2
     CREATED --> STOCK_RESERVED: StockReserved (CAS)
     CREATED --> STOCK_FAILED: StockReserveFailed (CAS)
     CREATED --> CANCELED: cancel (CAS)
+    STOCK_RESERVED --> PAID: PaymentSucceeded (CAS)
 ```
 
 ## 库存事件乱序处理（order-service）
@@ -110,6 +111,37 @@ flowchart TD
     N --> O{Inserted?}
     O -- No --> P[Idempotent skip]
     O -- Yes --> Q[Business consume + log]
+```
+
+## 支付回调幂等（payment-service）
+
+```mermaid
+flowchart TD
+    A[POST /payments/mock-callback] --> B[Verify signature]
+    B --> C{Valid?}
+    C -- No --> D[Insert t_pay_callback_log signature_valid=0]
+    D --> E[Return SIGN-401]
+    C -- Yes --> F[IdempotencyService (key=payNo/clientRequestId)]
+    F --> G[Insert t_pay_callback_log signature_valid=1]
+    G --> H{Status can transit?}
+    H -- No --> I[Insert t_pay_state_flow ignored]
+    H -- Yes --> J[CAS update t_pay_order -> SUCCESS]
+    J --> K[Insert t_pay_state_flow]
+    K --> L[Insert t_outbox_event PaymentSucceeded]
+```
+
+## 支付补单/对账占位（payment-service）
+
+```mermaid
+flowchart TD
+    A[Scheduler] --> B[Scan t_pay_order status=PAYING timeout]
+    B --> C[Mock query payment status]
+    C --> D{SUCCESS?}
+    D -- Yes --> E[CAS update -> SUCCESS]
+    E --> F[Insert t_pay_state_flow RECONCILE_SUCCESS]
+    F --> G[Insert t_outbox_event PaymentSucceeded]
+    D -- No --> H[CAS update -> CLOSED]
+    H --> I[Insert t_pay_state_flow RECONCILE_CLOSE]
 ```
 
 ## 库存预占（Redis Lua + Outbox）流程

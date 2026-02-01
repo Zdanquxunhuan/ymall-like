@@ -10,6 +10,7 @@ docker compose up -d
 mvn -q -pl demo-service -am spring-boot:run
 mvn -q -pl order-service -am spring-boot:run
 mvn -q -pl inventory-service -am spring-boot:run
+mvn -q -pl payment-service -am spring-boot:run
 ```
 
 > 需要 JDK17 + Maven。
@@ -25,6 +26,7 @@ mvn -q -pl inventory-service -am spring-boot:run
 - RocketMQ 模板 + Outbox 中继骨架
 - Transactional Outbox Relay（指数退避 + DLQ + 消费幂等日志）
 - Redis Lua 库存预扣 + 订单事件驱动库存预占
+- 支付单创建/回调幂等 + PaymentSucceeded 事件驱动订单 PAID
 
 ## curl 示例
 
@@ -109,6 +111,40 @@ curl -X POST http://localhost:8081/orders/Oxxxx/cancel \
   -H 'idempotency_key: cancel-1'
 ```
 
+### 支付单创建
+
+```bash
+curl -X POST http://localhost:8084/payments \
+  -H 'Content-Type: application/json' \
+  -H 'idempotency_key: pay-req-1' \
+  -d '{
+    "orderNo": "Oxxxx",
+    "amount": 88.00,
+    "channel": "MOCK",
+    "clientRequestId": "pay-req-1"
+  }'
+```
+
+### 支付回调（mock + 签名）
+
+```bash
+PAY_NO=Pxxxx
+ORDER_NO=Oxxxx
+SIGN_PAYLOAD="${PAY_NO}|${ORDER_NO}|88.0|SUCCESS"
+SIGNATURE=$(printf "%s" "$SIGN_PAYLOAD" | openssl dgst -sha256 -hmac "demo-secret" | awk '{print $2}')
+
+curl -X POST http://localhost:8084/payments/mock-callback \
+  -H 'Content-Type: application/json' \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{
+    "payNo": "'"$PAY_NO"'",
+    "orderNo": "'"$ORDER_NO"'",
+    "amount": 88.0,
+    "status": "SUCCESS",
+    "clientRequestId": "callback-1"
+  }'
+```
+
 ### 幂等接口
 
 ```bash
@@ -134,6 +170,7 @@ k6 run k6/ratelimit.js
 k6 run k6/order-create.js
 k6 run k6/order-create-consume.js
 k6 run k6/inventory-reserve.js
+k6 run k6/payment-callback.js
 ```
 
 > `k6/inventory-reserve.js` 使用 1000 并发请求同一 SKU，断言成功数 <= 100，失败返回 `INV-409`。
@@ -148,6 +185,14 @@ k6 run k6/inventory-reserve.js
 - **StockReserved / StockReserveFailed**（inventory-service -> 下游）
   - topic: `inventory-events`
   - tag: `StockEvent`
+  - key: `eventId`
+  - schemaVersion: `v1`
+
+## 支付事件契约
+
+- **PaymentSucceeded**（payment-service -> order-service）
+  - topic: `payment-events`
+  - tag: `PaymentEvent`
   - key: `eventId`
   - schemaVersion: `v1`
 

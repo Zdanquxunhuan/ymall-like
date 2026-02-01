@@ -46,6 +46,9 @@ class OrderStockEventServiceTest {
     @MockBean
     private org.apache.rocketmq.spring.core.RocketMQTemplate rocketMQTemplate;
 
+    @MockBean
+    private com.ymall.order.infrastructure.client.PaymentClient paymentClient;
+
     @Test
     void applyStockReservedUpdatesOrder() {
         String orderNo = createOrder("stock-req-1");

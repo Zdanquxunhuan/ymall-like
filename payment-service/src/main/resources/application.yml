@@ -1,9 +1,9 @@
 server:
-  port: 8081
+  port: 8084
 
 spring:
   application:
-    name: order-service
+    name: payment-service
   datasource:
     url: jdbc:mysql://localhost:3306/ymall_demo?useSSL=false&allowPublicKeyRetrieval=true
     username: root
@@ -16,19 +16,23 @@ spring:
 rocketmq:
   name-server: localhost:9876
   producer:
-    group: order-producer-group
+    group: payment-producer-group
 
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} traceId=%X{traceId} - %msg%n"
 
-order:
+payment:
   outbox:
     batch-size: 50
     relay-interval-ms: 500
-    tag: OrderEvent
+    tag: PaymentEvent
     retry-base-seconds: 2
     retry-max-seconds: 300
     max-retries: 6
-  payment:
-    base-url: http://localhost:8084
+  callback:
+    secret: demo-secret
+  reconcile:
+    timeout-seconds: 300
+    interval-ms: 5000
+    batch-size: 50
