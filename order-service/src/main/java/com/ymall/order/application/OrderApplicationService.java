@@ -31,8 +31,9 @@ import java.util.stream.Collectors;
 @Service
 public class OrderApplicationService {
     private static final String TOPIC = "order-events";
-    private static final String TAG_CREATED = "OrderCreated";
-    private static final String TAG_CANCELED = "OrderCanceled";
+    private static final String FIXED_TAG = "OrderEvent";
+    private static final String EVENT_CREATED = "OrderCreated";
+    private static final String EVENT_CANCELED = "OrderCanceled";
     private static final String EVENT_SCHEMA_VERSION = "v1";
 
     private final OrderMapper orderMapper;
@@ -82,8 +83,8 @@ public class OrderApplicationService {
 
         String eventId = UUID.randomUUID().toString();
         insertStateFlow(orderNo, null, OrderStatus.CREATED.name(), "CREATE", eventId);
-        insertOutboxEvent(eventId, orderNo, TAG_CREATED,
-                buildPayload(eventId, TAG_CREATED, order, items));
+        insertOutboxEvent(eventId, orderNo, FIXED_TAG,
+                buildPayload(eventId, EVENT_CREATED, order, items));
 
         return buildOrderResponse(order, items);
     }
@@ -109,7 +110,7 @@ public class OrderApplicationService {
         String eventId = UUID.randomUUID().toString();
         insertStateFlow(orderNo, OrderStatus.CREATED.name(), OrderStatus.CANCELED.name(), "CANCEL", eventId);
         List<OrderItem> items = orderItemMapper.findByOrderNo(orderNo);
-        insertOutboxEvent(eventId, orderNo, TAG_CANCELED, buildPayload(eventId, TAG_CANCELED, order, items));
+        insertOutboxEvent(eventId, orderNo, FIXED_TAG, buildPayload(eventId, EVENT_CANCELED, order, items));
         Order refreshed = orderMapper.selectById(orderNo);
         return buildOrderResponse(Objects.requireNonNullElse(refreshed, order));
     }
@@ -156,6 +157,7 @@ public class OrderApplicationService {
         event.setRetryCount(0);
         event.setNextRetryAt(null);
         event.setCreatedAt(Instant.now());
+        event.setTraceId(TraceIdUtil.currentTraceId());
         outboxEventMapper.insert(event);
     }
 

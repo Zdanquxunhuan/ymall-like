@@ -6,17 +6,17 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class OutboxRelayScheduler {
-    private final OutboxRelayService outboxRelayService;
+    private final OutboxRelayWorker outboxRelayWorker;
     private final int batchSize;
 
-    public OutboxRelayScheduler(OutboxRelayService outboxRelayService,
+    public OutboxRelayScheduler(OutboxRelayWorker outboxRelayWorker,
                                 @Value("${order.outbox.batch-size:50}") int batchSize) {
-        this.outboxRelayService = outboxRelayService;
+        this.outboxRelayWorker = outboxRelayWorker;
         this.batchSize = batchSize;
     }
 
-    @Scheduled(fixedDelayString = "${order.outbox.relay-interval-ms:2000}")
+    @Scheduled(fixedDelayString = "${order.outbox.relay-interval-ms:500}")
     public void relay() {
-        outboxRelayService.relayOnce(batchSize);
+        outboxRelayWorker.relayOnce(batchSize);
     }
 }

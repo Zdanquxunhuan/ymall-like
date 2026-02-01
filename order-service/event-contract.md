@@ -4,13 +4,12 @@
 - `order-events`
 
 ## Message Key
-- `biz_key` = `orderNo`
+- `event_id`（Outbox 事件 ID）
 
 ## Tags
 | Tag | Description | Version |
 | --- | --- | --- |
-| `OrderCreated` | 订单已创建 | v1 |
-| `OrderCanceled` | 订单已取消 | v1 |
+| `OrderEvent` | 订单事件（OrderCreated/OrderCanceled） | v1 |
 
 ## Payload Schema (JSON)
 

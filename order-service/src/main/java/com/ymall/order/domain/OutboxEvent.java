@@ -15,6 +15,7 @@ public class OutboxEvent {
     private Integer retryCount;
     private Instant nextRetryAt;
     private Instant createdAt;
+    private String traceId;
 
     public String getEventId() {
         return eventId;
@@ -86,5 +87,13 @@ public class OutboxEvent {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }
