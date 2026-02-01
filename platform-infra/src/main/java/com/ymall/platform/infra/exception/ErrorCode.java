@@ -5,7 +5,10 @@ public enum ErrorCode {
     VALIDATION_ERROR("REQ-400", "参数校验失败"),
     IDEMPOTENT_CONFLICT("IDEMP-409", "幂等冲突"),
     RATE_LIMITED("RATE-429", "请求被限流"),
-    MQ_SEND_FAILED("MQ-500", "消息发送失败");
+    MQ_SEND_FAILED("MQ-500", "消息发送失败"),
+    NOT_FOUND("RES-404", "资源不存在"),
+    ORDER_INVALID_STATE("ORDER-409", "订单状态非法"),
+    ORDER_CONCURRENT_MODIFIED("ORDER-412", "订单并发冲突");
 
     private final String code;
     private final String message;

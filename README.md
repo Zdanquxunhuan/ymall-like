@@ -8,6 +8,7 @@ docker compose up -d
 
 ```bash
 mvn -q -pl demo-service -am spring-boot:run
+mvn -q -pl order-service -am spring-boot:run
 ```
 
 > 需要 JDK17 + Maven。
@@ -23,6 +24,41 @@ mvn -q -pl demo-service -am spring-boot:run
 - RocketMQ 模板 + Outbox 中继骨架
 
 ## curl 示例
+
+### 订单创建
+
+```bash
+curl -X POST http://localhost:8081/orders \
+  -H 'Content-Type: application/json' \
+  -H 'idempotency_key: order-req-1' \
+  -d '{
+    "userId": 1,
+    "amount": 88.00,
+    "clientRequestId": "order-req-1",
+    "items": [
+      {
+        "skuId": 1001,
+        "qty": 1,
+        "titleSnapshot": "测试商品",
+        "priceSnapshot": 88.00,
+        "promoSnapshotJson": "{}"
+      }
+    ]
+  }'
+```
+
+### 订单查询
+
+```bash
+curl http://localhost:8081/orders/Oxxxx
+```
+
+### 订单取消
+
+```bash
+curl -X POST http://localhost:8081/orders/Oxxxx/cancel \
+  -H 'idempotency_key: cancel-1'
+```
 
 ### 幂等接口
 
@@ -46,6 +82,7 @@ curl http://localhost:8080/demo/ratelimit -H 'X-User-Id: u1'
 ```bash
 k6 run k6/idempotent.js
 k6 run k6/ratelimit.js
+k6 run k6/order-create.js
 ```
 
 ## 常见故障排查
