@@ -9,6 +9,7 @@ docker compose up -d
 ```bash
 mvn -q -pl demo-service -am spring-boot:run
 mvn -q -pl order-service -am spring-boot:run
+mvn -q -pl inventory-service -am spring-boot:run
 ```
 
 > 需要 JDK17 + Maven。
@@ -23,6 +24,7 @@ mvn -q -pl order-service -am spring-boot:run
 - 限流组件（Redis Lua 令牌桶）
 - RocketMQ 模板 + Outbox 中继骨架
 - Transactional Outbox Relay（指数退避 + DLQ + 消费幂等日志）
+- Redis Lua 库存预扣 + 订单事件驱动库存预占
 
 ## curl 示例
 
@@ -131,7 +133,42 @@ k6 run k6/idempotent.js
 k6 run k6/ratelimit.js
 k6 run k6/order-create.js
 k6 run k6/order-create-consume.js
+k6 run k6/inventory-reserve.js
 ```
+
+> `k6/inventory-reserve.js` 使用 1000 并发请求同一 SKU，断言成功数 <= 100，失败返回 `INV-409`。
+
+## 库存事件契约
+
+- **OrderCreated**（order-service -> inventory-service）
+  - topic: `order-events`
+  - tag: `OrderEvent`
+  - key: `eventId`
+  - schemaVersion: `v1`
+- **StockReserved / StockReserveFailed**（inventory-service -> 下游）
+  - topic: `inventory-events`
+  - tag: `StockEvent`
+  - key: `eventId`
+  - schemaVersion: `v1`
+
+## 库存初始化与超卖验证
+
+- `sql/init.sql` 默认初始化 `skuId=1001`、`warehouseId=1`、`available=100`。
+- `inventory-service` 启动时会将 `t_inventory.available_qty` 预热到 Redis `inv:{warehouseId}:{skuId}`。
+- Lua 预扣在 `inv:{warehouseId}:{skuId}` 上原子判断与扣减，防止并发超卖。
+
+## 幂等策略说明（库存预占）
+
+- Redis Lua 使用 `inv:resv:{orderNo}:{warehouseId}:{skuId}` 作为幂等标记，重复消息直接返回 `DUPLICATE`，不再扣减。
+- 数据库 `t_inventory_reservation` 通过唯一约束 `(order_no, sku_id, warehouse_id)` 保证幂等落库。
+
+## 库存占用超时释放（框架）
+
+`inventory.reservation-timeout.enabled=true` 后启用扫描任务：
+
+- 扫描 `t_inventory_reservation` 中 `RESERVED` 且超过超时阈值的记录。
+- 使用 `releaseReservation` 执行状态流转 `RESERVED -> RELEASED`（CAS）并回补 `t_inventory`。
+- 调用 Redis Lua 释放脚本，将 `inv:{warehouseId}:{skuId}` 回补（幂等）。
 
 ## 常见故障排查
 
@@ -139,3 +176,29 @@ k6 run k6/order-create-consume.js
 2. **RocketMQ 连接失败**：确认 namesrv 9876 与 broker 10911 端口已开放。
 3. **MySQL 连接失败**：确认 root/root 用户可连接，数据库 `ymall_demo` 已创建。
 4. **traceId 缺失**：检查 `TraceIdFilter` 是否被扫描到（`scanBasePackages` 包含 `com.ymall.platform`）。
+### 库存查询
+
+```bash
+curl "http://localhost:8082/inventory/1001?warehouseId=1"
+```
+
+### 库存预占（幂等）
+
+```bash
+curl -X POST http://localhost:8082/inventory/reservations/try \
+  -H 'Content-Type: application/json' \
+  -H 'idempotency_key: reserve-1' \
+  -d '{
+    "orderNo": "O-1000",
+    "skuId": 1001,
+    "warehouseId": 1,
+    "qty": 1,
+    "clientRequestId": "reserve-1"
+  }'
+```
+
+### 订单对应库存占用查询
+
+```bash
+curl "http://localhost:8082/inventory/reservations?orderNo=O-1000"
+```
