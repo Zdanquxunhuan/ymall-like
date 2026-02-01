@@ -1,0 +1,39 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/ymall_demo?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+rocketmq:
+  name-server: localhost:9876
+  producer:
+    group: inventory-producer-group
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} traceId=%X{traceId} - %msg%n"
+
+inventory:
+  default-warehouse-id: 1
+  reservation-ttl-seconds: 900
+  outbox:
+    batch-size: 50
+    relay-interval-ms: 500
+    tag: StockEvent
+    retry-base-seconds: 2
+    retry-max-seconds: 300
+    max-retries: 6
+  reservation-timeout:
+    enabled: false
+    minutes: 15
+    interval-ms: 60000
+    batch-size: 50

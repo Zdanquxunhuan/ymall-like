@@ -94,3 +94,18 @@ flowchart TD
     O -- No --> P[Idempotent skip]
     O -- Yes --> Q[Business consume + log]
 ```
+
+## 库存预占（Redis Lua + Outbox）流程
+
+```mermaid
+flowchart TD
+    A[OrderCreated MQ] --> B[Consume Idempotent t_mq_consume_log]
+    B --> C{Duplicate?}
+    C -- Yes --> C1[Skip]
+    C -- No --> D[Lua TryReserve inv:{warehouseId}:{skuId}]
+    D --> E{available >= qty?}
+    E -- No --> F[Insert Outbox StockReserveFailed]
+    E -- Yes --> G[DB tx: update t_inventory + insert t_inventory_reservation]
+    G --> H[Insert t_inventory_txn + state_flow]
+    H --> I[Insert Outbox StockReserved]
+```

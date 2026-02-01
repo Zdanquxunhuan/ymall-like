@@ -8,7 +8,11 @@ public enum ErrorCode {
     MQ_SEND_FAILED("MQ-500", "消息发送失败"),
     NOT_FOUND("RES-404", "资源不存在"),
     ORDER_INVALID_STATE("ORDER-409", "订单状态非法"),
-    ORDER_CONCURRENT_MODIFIED("ORDER-412", "订单并发冲突");
+    ORDER_CONCURRENT_MODIFIED("ORDER-412", "订单并发冲突"),
+    INVENTORY_INSUFFICIENT("INV-409", "库存不足"),
+    INVENTORY_RESERVE_FAILED("INV-500", "库存预占失败"),
+    INVENTORY_NOT_FOUND("INV-404", "库存不存在"),
+    INVENTORY_CONCURRENT_MODIFIED("INV-412", "库存并发冲突");
 
     private final String code;
     private final String message;
